@@ -8,14 +8,14 @@ async function validateUsernameEmail(req, res, next) {
       where: { emailAddress },
     });
     if (userWithEmail) {
-      return res.send(400).json({ message: "Email Addreess already taken" });
+      return res.status(400).json({ message: "Email Address already taken" });
     }
 
     const userWithUserName = await client.user.findFirst({
       where: { userName },
     });
     if (userWithUserName) {
-      return res.send(400).json({ message: "Username is already taken" });
+      return res.status(400).json({ message: "Username is already taken" });
     }
     next();
   } catch (e) {

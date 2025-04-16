@@ -1,15 +1,19 @@
-import express, { response } from "express";
+import express from "express";
 import bcrypt from "bcryptjs";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import validateUsernameEmail from "./middleware/validateUsernameEmail.js";
 import checkPasswordStrength from "./middleware/CheckPasswordStregth.js";
+import verifyUser from "./middleware/verifyUser.js";
 
 const app = express();
+app.use(cookieParser());
 const client = new PrismaClient();
 
 app.use(express.json());
+
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -88,11 +92,12 @@ app.post("/auth/login", async (req, res) => {
 
     const token = jwt.sign(jwtPayload, process.env.JWT_SECRET_KEY);
     res
+      //TODO: IF I FACE ERROR IN DEPLOYMENT I ENSURE I CHECCK THIS
       .status(200)
       .cookie("BlogitAuthToken", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       })
       .json({
         firstName: user.firstName,
@@ -105,6 +110,27 @@ app.post("/auth/login", async (req, res) => {
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Something went wrong" });
+  }
+});
+
+// controller api to createblogs
+app.post("/auth/CreateBlogs", [verifyUser], async (req, res) => {
+  try {
+    const authorId = req.user.id;
+    const { title, description, content } = req.body;
+    const newBlog = await client.blogs.create({
+      data: {
+        title,
+        description,
+        content,
+        authorId,
+      },
+    });
+
+    res.status(201).json({ message: "Blog created successfully" });
+  } catch (e) {
+    res.status(500).json({ message: "Something went wrong" });
+    console.log(e);
   }
 });
 

@@ -15,16 +15,32 @@ datasource db {
 
 model User {
   id            String   @id @default(uuid())
-  firstName    String   @map("first_name")
+  firstName     String   @map("first_name")
   lastName      String   @map("last_name")
   emailAddress  String   @unique @map("email_address")
   userName      String   @unique @map("username")
   password      String   @map("password")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_time")
-  isDeleted    Boolean  @default(false) @map("is_deleted")
+  isDeleted     Boolean  @default(false) @map("is_deleted")
   isDeactivated Boolean  @default(false) @map("is_deactivated")
+  entries       Blogs[]
 
   @@map("users")
 }
 
+model Blogs {
+  id          String   @id @default(uuid())
+  title       String   @map("blog_tittle")
+  description String   @map("blog_description")
+  content     String   @map("blog_content ")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("Updated_at")
+  authorId      String   @map("author_id")
+  isDeleted   Boolean  @default(false) @map("is_deleted")
+  isPinned    Boolean  @default(false) @map("is_pinned")
+  isArchieved Boolean  @default(false) @map("is_archieved")
+  author      User     @relation(fields: [authorId], references: [id])
+
+  @@map("blogs")
+}

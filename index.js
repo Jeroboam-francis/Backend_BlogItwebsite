@@ -127,10 +127,38 @@ app.post("/auth/CreateBlogs", [verifyUser], async (req, res) => {
       },
     });
 
-    res.status(201).json({ message: "Blog created successfully" });
+    res.status(201).json({ newBlog });
   } catch (e) {
     res.status(500).json({ message: "Something went wrong" });
     console.log(e);
+  }
+});
+
+//controller for getting a blog
+
+app.get("/getBlog/:blogId", verifyUser, async (req, res) => {
+  const authorId = req.user.id;
+  const blogId = req.params.blogId;
+  try {
+    const blog = await client.blogs.findFirst({
+      where: {
+        id: blogId,
+        authorId,
+        isDeleted: false,
+      },
+    });
+
+    if (blog) {
+      return res.status(200).json(blog);
+    }
+    res.status(400).json({
+      message: "Post not found",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error fetching the Blog",
+      status: "fail",
+    });
   }
 });
 

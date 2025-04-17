@@ -13,6 +13,13 @@ import path from "path";
 const app = express();
 app.use(cookieParser());
 const client = new PrismaClient();
+app.use(
+  cors({
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 // const upload = multer({ dest: "uploads/" });
 
 const storage = multer.diskStorage({
@@ -48,7 +55,7 @@ app.use("/uploads", express.static("uploads"));
 app.use(express.json());
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: "*",
     methods: "GET, POST, PUT, DELETE",
     credentials: true,
   })

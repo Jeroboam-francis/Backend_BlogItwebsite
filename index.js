@@ -7,13 +7,15 @@ import { PrismaClient } from "@prisma/client";
 import validateUsernameEmail from "./middleware/validateUsernameEmail.js";
 import checkPasswordStrength from "./middleware/CheckPasswordStregth.js";
 import verifyUser from "./middleware/verifyUser.js";
+// import multer from "multer";
 
 const app = express();
 app.use(cookieParser());
 const client = new PrismaClient();
+// const upload = multer({ dest: "uploads/" });
 
+app.use("/uploads", express.static("uploads"));
 app.use(express.json());
-
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -22,7 +24,7 @@ app.use(
   })
 );
 
-// Api to register new user
+// API to register new user
 app.post(
   "/auth/register",
   [checkPasswordStrength, validateUsernameEmail],
@@ -47,12 +49,12 @@ app.post(
 
       res.status(201).json(newUser);
     } catch (e) {
-      res.status(500).json({ message: "something went wrong" });
+      res.status(500).json({ message: "Something went wrong" });
     }
   }
 );
 
-//Api to log in users
+// API to log in users
 app.post("/auth/login", async (req, res) => {
   try {
     const { userName, emailAddress, password, identifier } = req.body;
@@ -78,7 +80,6 @@ app.post("/auth/login", async (req, res) => {
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
-    console.log(isMatch);
 
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -92,7 +93,6 @@ app.post("/auth/login", async (req, res) => {
 
     const token = jwt.sign(jwtPayload, process.env.JWT_SECRET_KEY);
     res
-      //TODO: IF I FACE ERROR IN DEPLOYMENT I ENSURE I CHECCK THIS
       .status(200)
       .cookie("BlogitAuthToken", token, {
         httpOnly: true,
@@ -105,19 +105,45 @@ app.post("/auth/login", async (req, res) => {
         userName: user.userName,
         emailAddress: user.emailAddress,
       });
-
-    //TODO: learn how to make a jwt token expire and use it
   } catch (e) {
     console.error(e);
     res.status(500).json({ message: "Something went wrong" });
   }
 });
 
-// controller api to createblogs
+// API to create blogs
+// app.post(
+//   "/auth/CreateBlogs",
+//   [verifyUser, upload.single("image")],
+//   async (req, res) => {
+//     try {
+//       const authorId = req.user.id;
+//       const { title, description, content } = req.body;
+//       const imagePath = req.file ? req.file.path : null;
+
+//       const newBlog = await client.blogs.create({
+//         data: {
+//           title,
+//           description,
+//           content,
+//           featuredImage: imagePath,
+//           authorId,
+//         },
+//       });
+
+//       res.status(201).json({ newBlog });
+//     } catch (e) {
+//       res.status(500).json({ message: "Something went wrong" });
+//       console.log(e);
+//     }
+//   }
+// );
 app.post("/auth/CreateBlogs", [verifyUser], async (req, res) => {
   try {
     const authorId = req.user.id;
     const { title, description, content } = req.body;
+    // const imagePath = req.file ? req.file.path : null;
+
     const newBlog = await client.blogs.create({
       data: {
         title,
@@ -134,8 +160,7 @@ app.post("/auth/CreateBlogs", [verifyUser], async (req, res) => {
   }
 });
 
-//controller for getting a blog
-
+// API to get a single blog
 app.get("/getBlog/:blogId", verifyUser, async (req, res) => {
   const authorId = req.user.id;
   const blogId = req.params.blogId;
@@ -162,7 +187,82 @@ app.get("/getBlog/:blogId", verifyUser, async (req, res) => {
   }
 });
 
-//checking the port that the server is running
+// API to get all blogs
+app.get("/blogs", async (req, res) => {
+  try {
+    const blogs = await client.blogs.findMany({
+      where: { isDeleted: false },
+      include: { author: { select: { userName: true, profilePicture: true } } },
+    });
+    res.status(200).json(blogs);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error fetching blogs" });
+  }
+});
+
+// API to update a blog
+app.put("/blogs/:blogId", verifyUser, async (req, res) => {
+  const blogId = req.params.blogId;
+  const { title, description, content } = req.body;
+
+  try {
+    const blog = await client.blogs.findFirst({
+      where: { id: blogId, authorId: req.user.id, isDeleted: false },
+    });
+
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    const updatedBlog = await client.blogs.update({
+      where: { id: blogId },
+      data: { title, description, content },
+    });
+
+    res.status(200).json(updatedBlog);
+  } catch (error) {
+    res.status(500).json({ message: "Error updating blog" });
+  }
+});
+
+// API to delete a blog
+app.delete("/blogs/:blogId", verifyUser, async (req, res) => {
+  const blogId = req.params.blogId;
+
+  try {
+    const blog = await client.blogs.findFirst({
+      where: { id: blogId, authorId: req.user.id, isDeleted: false },
+    });
+
+    if (!blog) {
+      return res.status(404).json({ message: "Blog not found" });
+    }
+
+    await client.blogs.update({
+      where: { id: blogId },
+      data: { isDeleted: true },
+    });
+
+    res.status(200).json({ message: "Blog deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Error deleting blog" });
+  }
+});
+
+// API to get blogs by the logged-in user
+app.get("/my-blogs", verifyUser, async (req, res) => {
+  try {
+    const blogs = await client.blogs.findMany({
+      where: { authorId: req.user.id, isDeleted: false },
+    });
+    res.status(200).json(blogs);
+  } catch (error) {
+    res.status(500).json({ message: "Error fetching your blogs" });
+  }
+});
+
+// Checking the port that the server is running
 const port = process.env.PORT || 4000;
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

@@ -20,6 +20,10 @@ model User {
   emailAddress  String   @unique @map("email_address")
   userName      String   @unique @map("username")
   password      String   @map("password")
+  profilePicture String? @map("profile_pictures")
+  featuredImage  String? @map("blogs_images")
+  imageUrl String? @map("featured_image")
+
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_time")
   isDeleted     Boolean  @default(false) @map("is_deleted")

@@ -7,12 +7,42 @@ import { PrismaClient } from "@prisma/client";
 import validateUsernameEmail from "./middleware/validateUsernameEmail.js";
 import checkPasswordStrength from "./middleware/CheckPasswordStregth.js";
 import verifyUser from "./middleware/verifyUser.js";
-// import multer from "multer";
+import multer from "multer";
+import path from "path";
 
 const app = express();
 app.use(cookieParser());
 const client = new PrismaClient();
 // const upload = multer({ dest: "uploads/" });
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "uploads/profile-pictures");
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const filetypes = /jpeg|jpg|png|gif/;
+    const mimetype = filetypes.test(file.mimetype);
+    const extname = filetypes.test(
+      path.extname(file.originalname).toLowerCase()
+    );
+
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Only image files are allowed (jpeg, jpg, png, gif)"));
+  },
+});
+
+//
 
 app.use("/uploads", express.static("uploads"));
 app.use(express.json());
@@ -22,6 +52,190 @@ app.use(
     methods: "GET, POST, PUT, DELETE",
     credentials: true,
   })
+);
+
+// app.use("/uploads", express.static("uploads"));
+// app.use(express.json());
+// app.use(
+//   cors({
+//     origin: "http://localhost:5173",
+//     methods: "GET, POST, PUT, DELETE",
+//     credentials: true,
+//   })
+// );
+
+// Get user profile
+app.get("/users/profile", verifyUser, async (req, res) => {
+  try {
+    const user = await client.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        emailAddress: true,
+        userName: true,
+        profilePicture: true,
+        phone: true,
+        occupation: true,
+        bio: true,
+        statusText: true,
+        secondaryEmail: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Error fetching profile" });
+  }
+});
+
+// Update user profile with file upload capability
+app.put(
+  "/users/update-profile",
+  [verifyUser, upload.single("profilePhoto")],
+  async (req, res) => {
+    try {
+      const {
+        firstName,
+        lastName,
+        emailAddress,
+        userName,
+        phone,
+        occupation,
+        bio,
+        statusText,
+        secondaryEmail,
+        currentPassword,
+        newPassword,
+        confirmNewPassword,
+      } = req.body;
+
+      // Validate required fields
+      if (!firstName || !lastName || !emailAddress || !userName) {
+        return res.status(400).json({ message: "Required fields are missing" });
+      }
+      console.log(res.file);
+
+      // Check if email or username already exists (excluding current user)
+      const existingUser = await client.user.findFirst({
+        where: {
+          AND: [
+            { id: { not: req.user.id } },
+            {
+              OR: [{ emailAddress }, { userName }],
+            },
+          ],
+        },
+      });
+
+      if (existingUser) {
+        if (existingUser.emailAddress === emailAddress) {
+          return res.status(400).json({ message: "Email already in use" });
+        }
+        if (existingUser.userName === userName) {
+          return res.status(400).json({ message: "Username already taken" });
+        }
+      }
+
+      // Check secondary email uniqueness if provided
+      if (secondaryEmail) {
+        const existingSecondaryEmail = await client.user.findFirst({
+          where: {
+            AND: [{ id: { not: req.user.id } }, { secondaryEmail }],
+          },
+        });
+
+        if (existingSecondaryEmail) {
+          return res
+            .status(400)
+            .json({ message: "Secondary email already in use" });
+        }
+      }
+
+      // Prepare update data
+      const updateData = {
+        firstName,
+        lastName,
+        emailAddress,
+        userName,
+        phone: phone || null,
+        occupation: occupation || null,
+        bio: bio || null,
+        statusText: statusText || null,
+        secondaryEmail: secondaryEmail || null,
+      };
+
+      // Handle profile photo if uploaded
+      if (req.file) {
+        updateData.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
+      }
+
+      // Handle password change if requested
+      if (newPassword) {
+        if (!currentPassword) {
+          return res.status(400).json({
+            message: "Current password is required to change password",
+          });
+        }
+        if (newPassword !== confirmNewPassword) {
+          return res.status(400).json({
+            message: "New passwords do not match",
+          });
+        }
+
+        const user = await client.user.findUnique({
+          where: { id: req.user.id },
+        });
+
+        const isMatch = await bcrypt.compare(currentPassword, user.password);
+        if (!isMatch) {
+          return res
+            .status(401)
+            .json({ message: "Current password is incorrect" });
+        }
+
+        const hashedPassword = await bcrypt.hash(newPassword, 12);
+        updateData.password = hashedPassword;
+      }
+
+      // Update user
+      const updatedUser = await client.user.update({
+        where: { id: req.user.id },
+        data: updateData,
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+          emailAddress: true,
+          userName: true,
+          profilePicture: true,
+          phone: true,
+          occupation: true,
+          bio: true,
+          statusText: true,
+          secondaryEmail: true,
+        },
+      });
+
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error(error);
+
+      if (error.code === "P2002") {
+        return res.status(400).json({
+          message: "A user with this email or username already exists",
+        });
+      }
+
+      res.status(500).json({ message: "Error updating profile" });
+    }
+  }
 );
 
 // API to register new user

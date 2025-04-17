@@ -15,7 +15,8 @@ app.use(cookieParser());
 const client = new PrismaClient();
 app.use(
   cors({
-    origin: "*",
+    origin:
+      "https://frontend-blog-it-3gh5-bfoxnqmxb-jeroboams-projects.vercel.app",
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })
@@ -53,13 +54,6 @@ const upload = multer({
 
 app.use("/uploads", express.static("uploads"));
 app.use(express.json());
-app.use(
-  cors({
-    origin: "*",
-    methods: "GET, POST, PUT, DELETE",
-    credentials: true,
-  })
-);
 
 // app.use("/uploads", express.static("uploads"));
 // app.use(express.json());
@@ -127,7 +121,7 @@ app.put(
       if (!firstName || !lastName || !emailAddress || !userName) {
         return res.status(400).json({ message: "Required fields are missing" });
       }
-      console.log(res.file);
+      console.log(req.file);
 
       // Check if email or username already exists (excluding current user)
       const existingUser = await client.user.findFirst({

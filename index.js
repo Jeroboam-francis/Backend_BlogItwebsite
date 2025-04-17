@@ -5,7 +5,7 @@ import cookieParser from "cookie-parser";
 import jwt from "jsonwebtoken";
 import { PrismaClient } from "@prisma/client";
 import validateUsernameEmail from "./middleware/validateUsernameEmail.js";
-import checkPasswordStrength from "./middleware/CheckPasswordStregth.js";
+import checkPasswordStrength from "./middleware/checkPasswordStrength.js";
 import verifyUser from "./middleware/verifyUser.js";
 import multer from "multer";
 import path from "path";

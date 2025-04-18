@@ -23,7 +23,6 @@ app.use(
     credentials: true,
   })
 );
-// const upload = multer({ dest: "uploads/" });
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -52,20 +51,8 @@ const upload = multer({
   },
 });
 
-//
-
 app.use("/uploads", express.static("uploads"));
 app.use(express.json());
-
-// app.use("/uploads", express.static("uploads"));
-// app.use(express.json());
-// app.use(
-//   cors({
-//     origin: "http://localhost:5173",
-//     methods: "GET, POST, PUT, DELETE",
-//     credentials: true,
-//   })
-// );
 
 // Get user profile
 app.get("/users/profile", verifyUser, async (req, res) => {
@@ -79,11 +66,6 @@ app.get("/users/profile", verifyUser, async (req, res) => {
         emailAddress: true,
         userName: true,
         profilePicture: true,
-        phone: true,
-        occupation: true,
-        bio: true,
-        statusText: true,
-        secondaryEmail: true,
       },
     });
 
@@ -98,7 +80,7 @@ app.get("/users/profile", verifyUser, async (req, res) => {
   }
 });
 
-// Update user profile with file upload capability
+// Update user profile
 app.put(
   "/users/update-profile",
   [verifyUser, upload.single("profilePhoto")],
@@ -109,23 +91,15 @@ app.put(
         lastName,
         emailAddress,
         userName,
-        phone,
-        occupation,
-        bio,
-        statusText,
-        secondaryEmail,
         currentPassword,
         newPassword,
         confirmNewPassword,
       } = req.body;
 
-      // Validate required fields
       if (!firstName || !lastName || !emailAddress || !userName) {
         return res.status(400).json({ message: "Required fields are missing" });
       }
-      console.log(req.file);
 
-      // Check if email or username already exists (excluding current user)
       const existingUser = await client.user.findFirst({
         where: {
           AND: [
@@ -146,32 +120,11 @@ app.put(
         }
       }
 
-      // Check secondary email uniqueness if provided
-      if (secondaryEmail) {
-        const existingSecondaryEmail = await client.user.findFirst({
-          where: {
-            AND: [{ id: { not: req.user.id } }, { secondaryEmail }],
-          },
-        });
-
-        if (existingSecondaryEmail) {
-          return res
-            .status(400)
-            .json({ message: "Secondary email already in use" });
-        }
-      }
-
-      // Prepare update data
       const updateData = {
         firstName,
         lastName,
         emailAddress,
         userName,
-        phone: phone || null,
-        occupation: occupation || null,
-        bio: bio || null,
-        statusText: statusText || null,
-        secondaryEmail: secondaryEmail || null,
       };
 
       if (req.file) {
@@ -205,7 +158,6 @@ app.put(
         updateData.password = hashedPassword;
       }
 
-      // Update user
       const updatedUser = await client.user.update({
         where: { id: req.user.id },
         data: updateData,
@@ -216,11 +168,6 @@ app.put(
           emailAddress: true,
           userName: true,
           profilePicture: true,
-          phone: true,
-          occupation: true,
-          bio: true,
-          statusText: true,
-          secondaryEmail: true,
         },
       });
 
@@ -327,37 +274,10 @@ app.post("/auth/login", async (req, res) => {
 });
 
 // API to create blogs
-// app.post(
-//   "/auth/CreateBlogs",
-//   [verifyUser, upload.single("image")],
-//   async (req, res) => {
-//     try {
-//       const authorId = req.user.id;
-//       const { title, description, content } = req.body;
-//       const imagePath = req.file ? req.file.path : null;
-
-//       const newBlog = await client.blogs.create({
-//         data: {
-//           title,
-//           description,
-//           content,
-//           featuredImage: imagePath,
-//           authorId,
-//         },
-//       });
-
-//       res.status(201).json({ newBlog });
-//     } catch (e) {
-//       res.status(500).json({ message: "Something went wrong" });
-//       console.log(e);
-//     }
-//   }
-// );
 app.post("/auth/CreateBlogs", [verifyUser], async (req, res) => {
   try {
     const authorId = req.user.id;
     const { title, description, content } = req.body;
-    // const imagePath = req.file ? req.file.path : null;
 
     const newBlog = await client.blogs.create({
       data: {

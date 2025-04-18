@@ -16,7 +16,7 @@ const client = new PrismaClient();
 app.use(
   cors({
     origin: [
-      "https://frontend-blog-fx8lwzvkm-jeroboams-projects.vercel.app/",
+      "https://frontend-blog-fx8lwzvkm-jeroboams-projects.vercel.app",
       "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
@@ -174,12 +174,10 @@ app.put(
         secondaryEmail: secondaryEmail || null,
       };
 
-      // Handle profile photo if uploaded
       if (req.file) {
         updateData.profilePicture = `/uploads/profile-pictures/${req.file.filename}`;
       }
 
-      // Handle password change if requested
       if (newPassword) {
         if (!currentPassword) {
           return res.status(400).json({

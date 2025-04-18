@@ -16,7 +16,7 @@ const client = new PrismaClient();
 app.use(
   cors({
     origin: [
-      "https://frontend-blog-5b153poix-jeroboams-projects.vercel.app/",
+      "https://frontend-blog-5b153poix-jeroboams-projects.vercel.app",
       "http://localhost:5173",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],

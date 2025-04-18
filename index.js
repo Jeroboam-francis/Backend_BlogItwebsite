@@ -15,8 +15,10 @@ app.use(cookieParser());
 const client = new PrismaClient();
 app.use(
   cors({
-    origin:
+    origin: [
       "https://frontend-blog-it-3gh5-bfoxnqmxb-jeroboams-projects.vercel.app",
+      "http://localhost:5173",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     credentials: true,
   })

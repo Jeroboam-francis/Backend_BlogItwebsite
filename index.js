@@ -323,7 +323,7 @@ app.post("/auth/login", async (req, res) => {
         emailAddress: user.emailAddress,
       });
   } catch (e) {
-    console.error(e);
+    console.error("Login error:", e);
     res.status(500).json({ message: "Something went wrong" });
   }
 });
